@@ -1,0 +1,20 @@
+{
+  "appId": "com.haitiantranslator.app",
+  "appName": "Haitian Translator",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true,
+    "allowNavigation": [
+      "localhost",
+      "192.168.1.123",
+      "10.0.2.2"
+    ]
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multilingual Translator</title>
+    <script src="capacitor.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f7fafc; }
+        .card { box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1); }
+        .translate-btn { transition: transform 0.1s; }
+        .translate-btn:hover { transform: translateY(-1px); }
+        /* Style for the Speak buttons to make them prominent */
+        .tts-button {
+            transition: all 0.1s ease;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+        }
+        .tts-button:active {
+            box-shadow: none;
+            transform: translateY(1px);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 bg-indigo-50">
+
+    <div class="w-full max-w-4xl bg-white card rounded-xl p-8 space-y-6">
+        <h1 class="text-3xl font-bold text-center text-indigo-700">English ↔ Spanish ↔ Haitian Creole Translator</h1>
+
+        <!-- Configuration and Status -->
+        <div id="statusMessage" class="h-6 text-center text-sm font-medium text-gray-600">
+            Ready to translate.
+        </div>
+        <div id="apiInfo" class="text-center text-xs text-gray-400">
+            Translation: Public Google Translate API | Creole TTS: Local Node.js Server
+        </div>
+
+        <!-- Language Selectors -->
+        <div class="flex flex-col md:flex-row items-center justify-between space-y-4 md:space-y-0 md:space-x-4">
+            <!-- Source Language -->
+            <div class="w-full md:w-1/3">
+                <label for="sourceLang" class="block text-sm font-medium text-gray-700 mb-1">Source Language</label>
+                <select id="sourceLang" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="English">English</option>
+                    <option value="Spanish">Spanish</option>
+                    <option value="Creole">Haitian Creole (Creole)</option>
+                </select>
+            </div>
+
+            <!-- Swap Button -->
+            <div class="flex-shrink-0 pt-6">
+                <button id="swapBtn" class="p-2 bg-indigo-100 text-indigo-700 rounded-full hover:bg-indigo-200 transition duration-150" title="Swap Languages">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                </button>
+            </div>
+
+            <!-- Target Language -->
+            <div class="w-full md:w-1/3">
+                <label for="targetLang" class="block text-sm font-medium text-gray-700 mb-1">Target Language</label>
+                <select id="targetLang" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="Spanish">Spanish</option>
+                    <option value="English">English</option>
+                    <option value="Creole">Haitian Creole (Creole)</option>
+                </select>
+                <label for="voiceSelect" class="block text-sm font-medium text-gray-700 mt-2 mb-1">Voice</label>
+                <select id="voiceSelect" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="">(Loading voices...)</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Translation Area -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Source Input -->
+            <div class="relative">
+                <label for="manualInput" class="block text-sm font-medium text-gray-700 mb-1">Manual Entry (optional)</label>
+                <textarea id="manualInput" rows="2" placeholder="Type text here or use Voice Input below..." class="w-full p-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 mb-2"></textarea>
+
+                <label for="sourceInput" class="block text-sm font-medium text-gray-700 mb-1">Detected / Source Text</label>
+                <textarea id="sourceInput" rows="4" placeholder="Detected speech or manual entry will appear here..." class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                
+                <div class="flex justify-between mt-2 space-x-2">
+                    <button id="sttBtn" class="tts-button flex items-center justify-center px-4 py-2 bg-red-500 text-white text-sm font-semibold rounded-lg hover:bg-red-600 w-1/2 disabled:opacity-50" disabled>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path d="M18.847 8.358a.75.75 0 011.082 1.032l-3.5 3.75a.75.75 0 01-1.082-1.032l3.5-3.75zM11 19a7 7 0 007-7h1.5a8.5 8.5 0 01-8.5 8.5V19zM10 16a6 6 0 006-6h1.5a7.5 7.5 0 01-7.5 7.5V16z" clip-rule="evenodd"/><path fill-rule="evenodd" d="M7 2a3 3 0 00-3 3v8a3 3 0 003 3h6a3 3 0 003-3V5a3 3 0 00-3-3H7zm1 14.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" clip-rule="evenodd"/></svg>
+                        Voice Input (STT)
+                    </button>
+                    <button id="sourceTtsBtn" class="tts-button flex items-center justify-center px-4 py-2 bg-blue-500 text-white text-sm font-semibold rounded-lg hover:bg-blue-600 w-1/2 disabled:opacity-50" disabled>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 3v14a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 15c-.217 0-.435-.074-.614-.216a.75.75 0 011.168-.973 4.5 4.5 0 001.077-.428.75.75 0 011.03 1.087 6 6 0 01-1.396.54.75.75 0 01-.265.029zM15.424 11.5a.75.75 0 00-1.077-.107 3 3 0 00-1.076.427.75.75 0 001.03 1.087 1.5 1.5 0 01.523-.207.75.75 0 00.592-1.199z" clip-rule="evenodd"/></svg>
+                        Source TTS
+                    </button>
+                </div>
+                <div id="sttStatus" class="text-xs text-red-500 mt-1 h-3"></div>
+            </div>
+
+            <!-- Target Output -->
+            <div>
+                <label for="targetOutput" class="block text-sm font-medium text-gray-700 mb-1">Translated Text</label>
+                <textarea id="targetOutput" rows="6" placeholder="Translation will appear here..." class="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 focus:ring-indigo-500 focus:border-indigo-500" readonly></textarea>
+                
+                <div class="flex justify-between mt-2 space-x-2">
+                    <button id="translateBtn" class="translate-btn flex items-center justify-center px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 w-1/2 disabled:opacity-50" disabled>
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+                        Translate
+                    </button>
+                    
+                    <button id="targetTtsBtn" class="tts-button flex items-center justify-center px-4 py-2 bg-green-500 text-white text-sm font-semibold rounded-lg hover:bg-green-600 w-1/2 disabled:opacity-50" disabled>
+                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 3v14a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 15c-.217 0-.435-.074-.614-.216a.75.75 0 011.168-.973 4.5 4.5 0 001.077-.428.75.75 0 011.03 1.087 6 6 0 01-1.396.54.75.75 0 01-.265.029zM15.424 11.5a.75.75 0 00-1.077-.107 3 3 0 00-1.076.427.75.75 0 001.03 1.087 1.5 1.5 0 01.523-.207.75.75 0 00.592-1.199z" clip-rule="evenodd"/></svg>
+                        Target TTS
+                    </button>
+                </div>
+                <div class="flex items-center space-x-2 mt-2">
+                    <div id="creoleTtsStatus" class="text-xs text-red-500 mt-1 h-3"></div>
+                    <button id="downloadAudioBtn" class="ml-2 px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded disabled:opacity-50" disabled>Download Audio</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audio Player (Hidden) -->
+    <audio id="ttsAudio" class="hidden"></audio>
+
+    <script>
+        // --- CONFIGURATION ---
+        // IMPORTANT: Update this to your computer's IP address if testing over Wi-Fi.
+        // If using 'adb reverse', keep it as localhost.
+        const SERVER_BASE_URL = "http://192.168.1.123:000"; 
+        const POLLING_INTERVAL_MS = 2000;
+        const LANG_CREOLE = 'Creole';
+        const LANG_MAP = {
+            'English': 'en-US',
+            'Spanish': 'es-ES',
+            'Creole': 'ht'
+        };
+
+        // --- DOM ELEMENTS ---
+        const sourceLangSelect = document.getElementById('sourceLang');
+        const targetLangSelect = document.getElementById('targetLang');
+        const sourceInput = document.getElementById('sourceInput');
+        const manualInput = document.getElementById('manualInput');
+        const targetOutput = document.getElementById('targetOutput');
+        const swapBtn = document.getElementById('swapBtn');
+        const translateBtn = document.getElementById('translateBtn');
+        const statusMessage = document.getElementById('statusMessage');
+        const sourceTtsBtn = document.getElementById('sourceTtsBtn');
+        const targetTtsBtn = document.getElementById('targetTtsBtn');
+        const sttBtn = document.getElementById('sttBtn');
+        const sttStatus = document.getElementById('sttStatus');
+        const creoleTtsStatus = document.getElementById('creoleTtsStatus');
+        const ttsAudio = document.getElementById('ttsAudio');
+        const downloadAudioBtn = document.getElementById('downloadAudioBtn');
+        const voiceSelect = document.getElementById('voiceSelect');
+
+        // --- VOICE SELECTION STATE ---
+        let availableVoices = [];
+        let enVoice = null;
+        let esVoice = null;
+
+        // --- UTILITY FUNCTIONS ---
+        const getSourceLang = () => sourceLangSelect.value;
+        const getTargetLang = () => targetLangSelect.value;
+        const setStatus = (message, colorClass, isHidden) => {
+            statusMessage.textContent = message;
+            statusMessage.className = `h-6 text-center text-sm font-medium ${colorClass}`;
+            if (isHidden) statusMessage.classList.add('invisible');
+        };
+        const showMessage = (msg) => {
+            setStatus(msg, 'text-red-600', false);
+            setTimeout(() => setStatus("Ready to translate.", 'text-gray-600', false), 3000);
+        };
+        const setButtonsEnabled = (isEnabled) => {
+            translateBtn.disabled = !isEnabled;
+            swapBtn.disabled = !isEnabled;
+            sourceInput.disabled = !isEnabled;
+            if (manualInput) manualInput.disabled = !isEnabled;
+        };
+
+        // --- VOICE LOADING ---
+    function getBestVoice(langCode) {
+        const codePrefix = langCode.substring(0, 2);
+        return availableVoices.find(v => v.lang.startsWith(codePrefix)) || availableVoices[0];
+    }
+    
+
+        function loadVoices() {
+            availableVoices = window.speechSynthesis.getVoices();
+            if (availableVoices.length > 0) {
+                enVoice = getBestVoice(LANG_MAP['English']);
+                esVoice = getBestVoice(LANG_MAP['Spanish']);
+                populateVoiceSelect();
+            }
+        }
+
+        async function populateVoiceSelect() {
+            if (!voiceSelect) return;
+            voiceSelect.innerHTML = '';
+
+            const browserGroup = document.createElement('optgroup');
+            browserGroup.label = 'Browser (English / Spanish)';
+            const browserVoices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+            browserVoices.forEach((v, idx) => {
+                if (!v.lang.startsWith('en') && !v.lang.startsWith('es')) return;
+                const opt = document.createElement('option');
+                opt.value = `browser:${idx}`;
+                opt.textContent = `${v.name} (${v.lang})`;
+                opt.dataset.type = 'browser';
+                opt.dataset.index = idx;
+                browserGroup.appendChild(opt);
+            });
+            voiceSelect.appendChild(browserGroup);
+
+            try {
+                const res = await fetch(`${SERVER_BASE_URL}/api/voices`);
+                if (res.ok) {
+                    const json = await res.json();
+                    const voicesData = json.voices && json.voices.voices ? json.voices.voices : (json.voices || []);
+                    if (voicesData && voicesData.length) {
+                        const creoleGroup = document.createElement('optgroup');
+                        creoleGroup.label = 'Creole TTS (CreoleCentric)';
+                        voicesData.forEach(v => {
+                            const opt = document.createElement('option');
+                            opt.value = v.voice_id || v.id || JSON.stringify(v);
+                            opt.textContent = `${v.name || v.voice_id} ${v.language_code ? `(${v.language_code})` : ''}`;
+                            opt.dataset.type = 'creole';
+                            creoleGroup.appendChild(opt);
+                        });
+                        voiceSelect.appendChild(creoleGroup);
+                    }
+                }
+            } catch (err) {
+                console.error('Error fetching Creole voices:', err);
+            }
+        }
+        
+        if (window.speechSynthesis) {
+            loadVoices();
+            window.speechSynthesis.onvoiceschanged = loadVoices;
+        }
+
+        // --- SPEECH TO TEXT (STT) ---
+        async function startSpeechRecognition() {
+            // DEBUG ALERT - DELETE AFTER TESTING
+           // alert("Code Updated! Mobile: " + (window.Capacitor && window.Capacitor.isNativePlatform() ? "Yes" : "No"));
+
+            const isMobile = window.Capacitor && window.Capacitor.isNativePlatform();
+
+            if (isMobile) {
+                // --- NATIVE MOBILE LOGIC ---
+                const { SpeechRecognition } = window.Capacitor.Plugins;
+                
+                sttStatus.textContent = "Listening... Speak now!";
+                sttBtn.disabled = true;
+                sttBtn.classList.add('bg-gray-400');
+
+                try {
+                    const result = await SpeechRecognition.start({
+                        language: LANG_MAP[getSourceLang()],
+                        maxResults: 1,
+                        prompt: "Speak now",
+                        partialResults: false,
+                        popup: true  // Shows native UI
+                    });
+
+                    if (result && result.matches && result.matches.length > 0) {
+                        sourceInput.value = result.matches[0];
+                        if (manualInput) manualInput.value = result.matches[0];
+                        sttStatus.textContent = "Voice input received.";
+                        generateTranslation();
+                    } else {
+                        sttStatus.textContent = "No speech was recognized.";
+                    }
+                } catch (error) {
+                    sttStatus.textContent = `Error: ${error.message}`;
+                    console.error("Speech recognition error:", error);
+                } finally {
+                    sttBtn.disabled = false;
+                    sttBtn.classList.remove('bg-gray-400');
+                }
+            } else {
+                // --- BROWSER FALLBACK LOGIC ---
+                const BrowserSpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!BrowserSpeechRecognition) {
+                    showMessage("Voice Input not supported by your browser.");
+                    sttBtn.disabled = true;
+                    return;
+                }
+
+                const recognition = new BrowserSpeechRecognition();
+                recognition.lang = LANG_MAP[getSourceLang()];
+                recognition.interimResults = false;
+                recognition.maxAlternatives = 1;
+
+                sttStatus.textContent = "Listening... Speak now!";
+                sttBtn.disabled = true;
+                sttBtn.classList.add('bg-gray-400');
+                
+                recognition.onresult = (event) => {
+                    const speechResult = event.results[0][0].transcript;
+                    sourceInput.value = speechResult;
+                    if (manualInput) manualInput.value = speechResult;
+                    sttStatus.textContent = "Voice input received.";
+                    generateTranslation();
+                };
+
+                recognition.onerror = (event) => {
+                    sttStatus.textContent = `Error: ${event.error}`;
+                };
+
+                recognition.onend = () => {
+                    sttBtn.disabled = false;
+                    sttBtn.classList.remove('bg-gray-400');
+                };
+
+                recognition.start();
+            }
+        }
+
+        // --- TTS LOGIC ---
+        function speakTextBrowser(text, langCode, voiceObj) {
+            if (!window.speechSynthesis || !text) return;
+            window.speechSynthesis.cancel();
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = langCode;
+
+            if (voiceObj) {
+                utterance.voice = voiceObj;
+            } else if (langCode === LANG_MAP['English'] && enVoice) {
+                utterance.voice = enVoice;
+            } else if (langCode === LANG_MAP['Spanish'] && esVoice) {
+                utterance.voice = esVoice;
+            } else {
+                 utterance.voice = getBestVoice(langCode);
+            }
+            
+            utterance.rate = 0.9; 
+            utterance.pitch = 1.0; 
+
+            const buttons = [sourceTtsBtn, targetTtsBtn];
+            buttons.forEach(btn => btn.disabled = true);
+
+            utterance.onend = () => {
+                buttons.forEach(btn => btn.disabled = false);
+            };
+            utterance.onerror = (event) => {
+                console.error('TTS Error:', event);
+                showMessage('Browser TTS failed.');
+                buttons.forEach(btn => btn.disabled = false);
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        async function playCreoleTts(text) {
+            if (!text) return;
+            
+            try {
+                creoleTtsStatus.textContent = "Submitting text for TTS...";
+                targetTtsBtn.disabled = true;
+
+                let selectedVoiceId = null;
+                if (voiceSelect) {
+                    const sel = voiceSelect.options[voiceSelect.selectedIndex];
+                    if (sel && sel.dataset && sel.dataset.type === 'creole') {
+                        selectedVoiceId = sel.value;
+                    }
+                }
+
+                const response = await fetch(`${SERVER_BASE_URL}/api/submit-tts`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, voice_id: selectedVoiceId })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}: ${await response.text()}`);
+                }
+
+                const data = await response.json();
+
+                if (data.success && data.jobId) {
+                    creoleTtsStatus.textContent = "Processing audio...";
+                    await pollCreoleCentricStatus(data.jobId);
+                } else {
+                    throw new Error(data.error || 'Unknown error occurred');
+                }
+            } catch (error) {
+                console.error('Creole TTS error:', error);
+                creoleTtsStatus.textContent = `Error: ${error.message}`;
+                showMessage(`TTS Failed: ${error.message}`);
+            } finally {
+                targetTtsBtn.disabled = false;
+            }
+        }
+
+        async function pollCreoleCentricStatus(jobId) {
+            let attempts = 0;
+            const maxAttempts = 30;
+            
+            const checkStatus = async () => {
+                try {
+                    const response = await fetch(`${SERVER_BASE_URL}/api/check-status?jobId=${jobId}`);
+                    
+                    if (!response.ok) throw new Error(`Status check failed: ${response.status}`);
+                    const data = await response.json();
+
+                    if (data.status === 'delivered' && data.audio_url) {
+                        creoleTtsStatus.textContent = "Audio ready. Playing...";
+                        ttsAudio.src = data.audio_url;
+                        if (downloadAudioBtn) {
+                            downloadAudioBtn.disabled = false;
+                            downloadAudioBtn.dataset.url = data.audio_url;
+                        }
+                        try {
+                            await ttsAudio.play();
+                            ttsAudio.onended = () => creoleTtsStatus.textContent = "Playback complete.";
+                        } catch (playError) {
+                            throw new Error(`Audio playback failed: ${playError.message}`);
+                        }
+                        return true; 
+                    } else if (data.status === 'failed') {
+                        throw new Error(data.error || 'TTS processing failed');
+                    } else {
+                        creoleTtsStatus.textContent = `Processing: ${data.status || 'waiting'}...`;
+                        return false; 
+                    }
+                } catch (error) {
+                    console.error('Status check error:', error);
+                    creoleTtsStatus.textContent = `Error: ${error.message}`;
+                    throw error;
+                }
+            };
+
+            while (attempts < maxAttempts) {
+                try {
+                    const finished = await checkStatus();
+                    if (finished) break;
+                    await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL_MS));
+                    attempts++;
+                } catch (error) {
+                    showMessage(`TTS Error: ${error.message}`);
+                    break;
+                }
+            }
+
+            if (attempts >= maxAttempts) {
+                creoleTtsStatus.textContent = "TTS processing timeout";
+                showMessage("TTS processing timed out after 60 seconds");
+            }
+        }
+
+        async function generateTranslation() {
+            const text = sourceInput.value.trim();
+            if (!text) {
+                targetOutput.value = '';
+                return;
+            }
+            if (getSourceLang() === getTargetLang()) {
+                targetOutput.value = text;
+                setStatus("Source and Target languages are the same. Text copied.", 'text-gray-600', false);
+                return;
+            }
+
+            setButtonsEnabled(false);
+            targetOutput.value = "Translating via Node.js server...";
+            setStatus("Translating...", 'text-yellow-500', false);
+
+            try {
+                const response = await fetch(`${SERVER_BASE_URL}/api/translate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        text: text,
+                        sourceLang: getSourceLang(),
+                        targetLang: getTargetLang()
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `Server returned status ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const translatedText = data.translation || "Translation Error: Could not retrieve text.";
+
+                targetOutput.value = translatedText;
+                setStatus("Translation complete.", 'text-green-500', false);
+
+            } catch (error) {
+                console.error("Translation failed:", error);
+                targetOutput.value = "Translation failed. Check console or Node.js logs.";
+                setStatus("Translation failed.", 'text-red-500', false);
+                showMessage(`Translation failed: ${error.message}`);
+            } finally {
+                setButtonsEnabled(true);
+            }
+        }
+
+        // --- EVENT HANDLERS ---
+        swapBtn.addEventListener('click', () => {
+            const tempSource = sourceLangSelect.value;
+            sourceLangSelect.value = targetLangSelect.value;
+            targetLangSelect.value = tempSource;
+            const tempText = sourceInput.value;
+            sourceInput.value = targetOutput.value;
+            targetOutput.value = tempText;
+            updateTtsButtons();
+        });
+
+        translateBtn.addEventListener('click', generateTranslation);
+        sourceInput.addEventListener('input', () => {
+            if (manualInput && manualInput.value !== sourceInput.value) manualInput.value = sourceInput.value;
+            generateTranslation();
+        });
+        if (manualInput) {
+            manualInput.addEventListener('input', () => {
+                if (sourceInput.value !== manualInput.value) sourceInput.value = manualInput.value;
+                generateTranslation();
+            });
+        }
+        sourceLangSelect.addEventListener('change', () => { generateTranslation(); updateTtsButtons(); });
+        targetLangSelect.addEventListener('change', () => { generateTranslation(); updateTtsButtons(); });
+        targetOutput.addEventListener('input', updateTtsButtons);
+
+        function updateTtsButtons() {
+            const sourceText = sourceInput.value.trim();
+            const targetText = targetOutput.value.trim();
+            const sourceLang = getSourceLang();
+            sttBtn.disabled = !(['English', 'Spanish', 'Creole'].includes(sourceLang));
+            sttStatus.textContent = sttBtn.disabled ? "Voice input supported for English, Spanish. Creole limited." : "";
+            sourceTtsBtn.disabled = !sourceText || sourceLang === LANG_CREOLE;
+            targetTtsBtn.disabled = !targetText;
+        }
+
+        sourceTtsBtn.addEventListener('click', () => {
+            const sourceLang = getSourceLang();
+            const sourceCode = LANG_MAP[sourceLang];
+            const text = sourceInput.value.trim();
+            if (sourceLang === LANG_CREOLE) {
+                 showMessage("Creole TTS can only be used on the target text via the server.");
+                 return;
+            }
+            let selectedBrowserVoice = null;
+            if (voiceSelect) {
+                const sel = voiceSelect.options[voiceSelect.selectedIndex];
+                if (sel && sel.dataset && sel.dataset.type === 'browser') {
+                    const idx = parseInt(sel.dataset.index, 10);
+                    selectedBrowserVoice = availableVoices[idx];
+                }
+            }
+            speakTextBrowser(text, sourceCode, selectedBrowserVoice);
+        });
+
+        targetTtsBtn.addEventListener('click', () => {
+            const targetLang = getTargetLang();
+            const targetCode = LANG_MAP[targetLang];
+            const text = targetOutput.value.trim();
+            if (targetLang === LANG_CREOLE) {
+                playCreoleTts(text);
+            } else {
+                speakTextBrowser(text, targetCode);
+            }
+        });
+
+        sttBtn.addEventListener('click', startSpeechRecognition);
+
+        if (downloadAudioBtn) {
+            downloadAudioBtn.addEventListener('click', async () => {
+                const url = downloadAudioBtn.dataset.url;
+                if (!url) return showMessage('No audio available.');
+                window.open(url, '_blank');
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateTtsButtons();
+            translateBtn.disabled = false; 
+            if (window.SpeechRecognition || window.webkitSpeechRecognition) {
+                sttBtn.title = "Click to speak your input.";
+            } else {
+                sttBtn.title = "Voice Input not supported.";
+            }
+        });
+    </script>
+</body>
+</html>
